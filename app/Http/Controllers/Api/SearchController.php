@@ -16,7 +16,7 @@ class SearchController extends Controller
     public function global(Request $request): JsonResponse
     {
         $request->validate([
-            'q' => 'required|string|min:2|max:100',
+            'q' => 'required|string|min:1|max:100',
         ]);
 
         $q = $request->q;
@@ -120,7 +120,7 @@ class SearchController extends Controller
     public function users(Request $request): JsonResponse
     {
         $request->validate([
-            'q' => 'required|string|min:2|max:100',
+            'q' => 'required|string|min:1|max:100',
         ]);
 
         $users = User::where('username', 'like', "%{$request->q}%")
@@ -138,7 +138,7 @@ class SearchController extends Controller
     public function tags(Request $request): JsonResponse
     {
         $request->validate([
-            'q' => 'required|string|min:2|max:100',
+            'q' => 'required|string|min:1|max:100',
         ]);
 
         $tags = Tag::where('name', 'like', "%{$request->q}%")
