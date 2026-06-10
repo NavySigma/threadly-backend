@@ -1,0 +1,23 @@
+{
+    "$schema": "https://www.schemastore.org/package.json",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "build": "vite build",
+        "dev": "vite",
+        "cy:run": "npx cypress run --e2e --spec \"cypress/e2e/api/**/*.cy.js\"",
+        "cy:open": "npx cypress open --e2e",
+        "test:api:setup": "php artisan migrate:fresh --seed",
+        "test:api:seed": "php artisan db:seed --class=DatabaseSeeder",
+        "test:api": "php artisan migrate:fresh --seed && npx cypress run --e2e --spec \"cypress/e2e/api/**/*.cy.js\""
+    },
+    "devDependencies": {
+        "@tailwindcss/vite": "^4.0.0",
+        "axios": "^1.11.0",
+        "concurrently": "^9.0.1",
+        "cypress": "^15.16.0",
+        "laravel-vite-plugin": "^2.0.0",
+        "tailwindcss": "^4.0.0",
+        "vite": "^7.0.7"
+    }
+}

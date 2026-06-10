@@ -1,0 +1,26 @@
+{
+  "admin": {
+    "username": "superadmin",
+    "email": "superadmin@example.com",
+    "password": "password123",
+    "password_confirmation": "password123"
+  },
+  "poster": {
+    "username": "testposter",
+    "email": "poster@example.com",
+    "password": "password123",
+    "password_confirmation": "password123"
+  },
+  "commenter": {
+    "username": "testcommenter",
+    "email": "commenter@example.com",
+    "password": "password123",
+    "password_confirmation": "password123"
+  },
+  "voter": {
+    "username": "testvoter",
+    "email": "voter@example.com",
+    "password": "password123",
+    "password_confirmation": "password123"
+  }
+}
