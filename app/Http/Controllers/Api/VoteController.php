@@ -92,6 +92,9 @@ class VoteController extends Controller
             $this->applyPoints($user, $owner, $validated['vote_type'], $target->id);
             $target->increment('vote_score', $validated['vote_type'] === 'upvote' ? 1 : -1);
 
+            if ($validated['target_type'] === 'post') {
+                cache()->forget("posts.show.{$validated['target_id']}");
+            }
             return response()->json(['message' => 'Vote berhasil diubah.']);
         }
 

@@ -27,13 +27,19 @@ class UserController extends Controller
     // Lihat profile orang lain (public)
     public function show(User $user): JsonResponse
     {
-        $data = $user->only([
-            'id', 'username', 'avatar_url', 'bio', 'reputation_points', 'created_at'
-        ]);
+        $cacheKey = "users.show.{$user->id}";
 
-        $data['followers_count'] = $user->followers()->count();
-        $data['following_count'] = $user->following()->count();
-        $data['posts_count']     = $user->posts()->where('status', 'open')->count();
+        $data = cache()->remember($cacheKey, now()->addMinutes(10), function () use ($user) {
+            $data = $user->only([
+                'id', 'username', 'avatar_url', 'bio', 'reputation_points', 'level', 'created_at'
+            ]);
+
+            $data['followers_count'] = $user->followers()->count();
+            $data['following_count'] = $user->following()->count();
+            $data['posts_count']     = $user->posts()->where('status', 'open')->count();
+
+            return $data;
+        });
 
         return response()->json(['data' => $data]);
     }
@@ -54,6 +60,7 @@ class UserController extends Controller
 
         $user->update($validated);
 
+        cache()->forget("users.show.{$request->user()->id}");
         return response()->json(['message' => 'Profile berhasil diupdate.', 'data' => $user]);
     }
 

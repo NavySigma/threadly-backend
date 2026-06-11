@@ -205,6 +205,66 @@ class PostController extends Controller
         return response()->json(['message' => 'Post berhasil dihapus.']);
     }
 
+    // PostController
+
+    public function close(Request $request, Post $post): JsonResponse
+    {
+        if ($request->user()->id !== $post->user_id) {
+            return response()->json(['message' => 'Forbidden.'], 403);
+        }
+
+        if ($post->status === 'deleted') {
+            return response()->json(['message' => 'Post sudah dihapus.'], 422);
+        }
+
+        if ($post->status === 'closed') {
+            return response()->json(['message' => 'Post sudah ditutup.'], 422);
+        }
+
+        $post->update([
+            'status'    => 'closed',
+            'closed_at' => now(),
+        ]);
+
+        cache()->forget("posts.show.{$post->id}");
+
+        return response()->json([
+            'message'          => 'Post berhasil ditutup. Kamu punya waktu 24 jam untuk reopen.',
+            'closed_at'        => $post->closed_at,
+            'reopen_deadline'  => $post->closed_at->addHours(24),
+        ]);
+    }
+
+    public function reopen(Request $request, Post $post): JsonResponse
+    {
+        if ($request->user()->id !== $post->user_id) {
+            return response()->json(['message' => 'Forbidden.'], 403);
+        }
+
+        if ($post->status !== 'closed') {
+            return response()->json(['message' => 'Post tidak dalam kondisi closed.'], 422);
+        }
+
+        // Permanent closed — closed_at null artinya sudah lewat 24 jam (di-set scheduler)
+        if (is_null($post->closed_at)) {
+            return response()->json(['message' => 'Post sudah permanent closed, tidak bisa dibuka kembali.'], 422);
+        }
+
+        // Cek 24 jam
+        if ($post->closed_at->diffInHours(now()) >= 24) {
+            return response()->json(['message' => 'Post sudah permanent closed, tidak bisa dibuka kembali.'], 422);
+        }
+
+        $post->update([
+            'status'    => 'open',
+            'closed_at' => null,
+        ]);
+
+        cache()->forget("posts.show.{$post->id}");
+
+        return response()->json(['message' => 'Post berhasil dibuka kembali.']);
+    }
+
     private function clearPostCache(string $postId = null): void
     {
         if ($postId) {

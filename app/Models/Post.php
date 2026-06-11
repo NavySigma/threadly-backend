@@ -14,7 +14,12 @@ class Post extends Model
     use HasUuids;
 
     protected $fillable = [
-        'user_id', 'category_id', 'title', 'body', 'status', 'view_count', 'vote_score', 'is_answered', 'accepted_answer_id',
+        'user_id', 'category_id', 'title', 'body', 'status', 'view_count', 'vote_score', 'is_answered', 'accepted_answer_id', 'closed_at',
+    ];
+
+    protected $casts = [
+        'closed_at'   => 'datetime',
+        'is_answered' => 'boolean',
     ];
 
     public function user(): BelongsTo

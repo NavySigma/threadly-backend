@@ -72,7 +72,10 @@ class SearchController extends Controller
             'sort'          => 'nullable|in:latest,oldest,popular,votes',
         ]);
 
-        $posts = Post::where('status', 'open')
+        $cacheKey = 'search.posts.' . md5(json_encode($request->all()));
+
+        $posts = cache()->remember($cacheKey, now()->addMinutes(5), function () use ($request) {
+        return Post::where('status', 'open')
             ->when($request->q, fn($query) =>
                 $query->where('title', 'like', "%{$request->q}%")
                       ->orWhere('body', 'like', "%{$request->q}%")
@@ -112,6 +115,7 @@ class SearchController extends Controller
             }, fn($query) => $query->latest())
             ->with(['user:id,username,avatar_url', 'category:id,name,slug', 'tags:id,name,slug,color'])
             ->paginate(15);
+        });
 
         return response()->json($posts);
     }
