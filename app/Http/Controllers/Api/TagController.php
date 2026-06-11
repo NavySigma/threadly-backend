@@ -13,13 +13,13 @@ class TagController extends Controller
     // Public
     public function index(Request $request): JsonResponse
     {
-        $cacheKey = 'tags.'.md5($request->get('search', ''));
+        $cacheKey = 'tags.index.' . md5($request->get('search', ''));
 
         $tags = cache()->remember($cacheKey, now()->addMinutes(30), function () use ($request) {
             return Tag::when(
-                $request->search,
-                fn ($q) => $q->where('name', 'like', "%{$request->search}%")
-            )
+                    $request->search,
+                    fn($q) => $q->where('name', 'like', "%{$request->search}%")
+                )
                 ->orderByDesc('usage_count')
                 ->paginate(20);
         });
@@ -29,12 +29,17 @@ class TagController extends Controller
 
     public function show(Tag $tag): JsonResponse
     {
-        $tag->load(['posts' => fn ($q) => $q
-            ->where('status', 'open')
-            ->with(['user:id,username,avatar_url', 'category:id,name,slug'])
-            ->latest()
-            ->limit(10),
-        ]);
+        $cacheKey = "tags.show.{$tag->id}";
+
+        $tag = cache()->remember($cacheKey, now()->addMinutes(30), function () use ($tag) {
+            $tag->load(['posts' => fn($q) => $q
+                ->where('status', 'open')
+                ->with(['user:id,username,avatar_url', 'category:id,name,slug'])
+                ->latest()
+                ->limit(10)
+            ]);
+            return $tag;
+        });
 
         return response()->json(['data' => $tag]);
     }
@@ -59,7 +64,7 @@ class TagController extends Controller
             'color' => $validated['color'] ?? null,
         ]);
 
-        cache()->flush();
+        $this->clearTagCache();
         return response()->json(['message' => 'Tag berhasil dibuat.', 'data' => $tag], 201);
     }
 
@@ -86,7 +91,7 @@ class TagController extends Controller
 
         $tag->update($validated);
 
-        cache()->flush();
+        $this->clearTagCache($tag->id);
         return response()->json(['message' => 'Tag berhasil diupdate.', 'data' => $tag]);
     }
 
@@ -100,7 +105,15 @@ class TagController extends Controller
         $tag->posts()->detach();
         $tag->delete();
 
-        cache()->flush();
+        $this->clearTagCache($tag->id);
         return response()->json(['message' => 'Tag berhasil dihapus.']);
+    }
+
+    private function clearTagCache(string $tagId = null): void
+    {
+        cache()->flush(); // flush semua karena index pakai md5
+        if ($tagId) {
+            cache()->forget("tags.show.{$tagId}");
+        }
     }
 }

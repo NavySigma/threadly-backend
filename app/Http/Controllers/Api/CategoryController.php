@@ -13,7 +13,7 @@ class CategoryController extends Controller
     // Public - semua bisa lihat
     public function index(): JsonResponse
     {
-        $categories = cache()->remember('categories.all', now()->addHours(1), function () {
+        $categories = cache()->remember('categories.all', now()->addHour(), function () {
             return Category::with('children')
                 ->whereNull('parent_id')
                 ->get();
@@ -24,12 +24,18 @@ class CategoryController extends Controller
 
     public function show(Category $category): JsonResponse
     {
-        $category->load(['children', 'posts' => fn ($q) => $q
-            ->where('status', 'open')
-            ->with(['user:id,username,avatar_url', 'tags:id,name,slug,color'])
-            ->latest()
-            ->limit(10),
-        ]);
+        $cacheKey = "categories.show.{$category->id}";
+
+        $category = cache()->remember($cacheKey, now()->addHour(), function () use ($category) {
+            $category->load(['children', 'posts' => fn ($q) => $q
+                ->where('status', 'open')
+                ->with(['user:id,username,avatar_url', 'tags:id,name,slug,color'])
+                ->latest()
+                ->limit(10),
+            ]);
+
+            return $category;
+        });
 
         return response()->json(['data' => $category]);
     }
@@ -56,7 +62,7 @@ class CategoryController extends Controller
 
         $category = Category::create($validated);
 
-        cache()->forget('categories.all');
+        $this->clearCategoryCache();
         return response()->json(['message' => 'Category berhasil dibuat.', 'data' => $category], 201);
     }
 
@@ -89,7 +95,7 @@ class CategoryController extends Controller
 
         $category->update($validated);
 
-        cache()->forget('categories.all');
+        $this->clearCategoryCache($category->id);
         return response()->json(['message' => 'Category berhasil diupdate.', 'data' => $category]);
     }
 
@@ -109,7 +115,15 @@ class CategoryController extends Controller
 
         $category->delete();
 
-        cache()->forget('categories.all');
+        $this->clearCategoryCache($category->id);
         return response()->json(['message' => 'Category berhasil dihapus.']);
+    }
+
+    private function clearCategoryCache(string $categoryId = null): void
+    {
+        cache()->forget('categories.all');
+        if ($categoryId) {
+            cache()->forget("categories.show.{$categoryId}");
+        }
     }
 }
