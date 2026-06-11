@@ -57,13 +57,16 @@ class PostController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        if ($request->user()->is_banned) {
+            return response()->json(['message' => 'Akun kamu telah diblokir.'], 403);
+        }
         if ($request->user()->reputation_points < 15) {
             return response()->json(['message' => 'Minimal 15 poin untuk membuat postingan.'], 422);
         }
         $validated = $request->validate([
             'category_id' => 'required|uuid|exists:categories,id',
             'title' => 'required|string|min:10|max:300',
-            'body' => 'required|string|min:20',
+            'body' => 'required|string|min:20|max:50000',
             'tags' => 'nullable|array|max:5',
             'tags.*' => 'uuid|exists:tags,id',
         ]);

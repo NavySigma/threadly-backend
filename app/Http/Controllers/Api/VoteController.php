@@ -29,6 +29,10 @@ class VoteController extends Controller
 
     public function vote(Request $request): JsonResponse
     {
+        if ($request->user()->is_banned) {
+            return response()->json(['message' => 'Akun kamu telah diblokir.'], 403);
+        }
+
         $validated = $request->validate([
             'target_type' => 'required|in:post,comment',
             'target_id'   => 'required|uuid',

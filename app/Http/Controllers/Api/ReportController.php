@@ -22,6 +22,10 @@ class ReportController extends Controller
     // User bikin report — hanya post & comment
     public function store(Request $request): JsonResponse
     {
+        if ($request->user()->is_banned) {
+            return response()->json(['message' => 'Akun kamu telah diblokir.'], 403);
+        }
+
         $validated = $request->validate([
             'target_type' => 'required|in:post,comment',
             'target_id'   => 'required|uuid',

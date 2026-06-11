@@ -36,6 +36,10 @@ class CommentController extends Controller
     // Buat komentar atau reply
     public function store(Request $request, Post $post): JsonResponse
     {
+        if ($request->user()->is_banned) {
+            return response()->json(['message' => 'Akun kamu telah diblokir.'], 403);
+        }
+
         if (!$post->isAccessible()) {
             return response()->json(['message' => 'Post tidak tersedia untuk dikomentari.'], 422);
         }

@@ -51,7 +51,7 @@ class UserController extends Controller
 
         $validated = $request->validate([
             'username'   => [
-                'sometimes', 'string', 'min:3', 'max:100',
+                'sometimes', 'string', 'min:3', 'max:100', 'alpha_dash',
                 Rule::unique('users', 'username')->ignore($user->id),
             ],
             'avatar_url' => 'sometimes|nullable|url|max:500',

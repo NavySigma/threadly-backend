@@ -35,7 +35,7 @@ Route::prefix('search')->group(function () {
     Route::get('/tags', [SearchController::class, 'tags']);   // GET /api/search/tags?q=php
 });
 
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware('auth:sanctum', 'banned')->group(function () {
     
     Route::post('/logout', [AuthController::class, 'logout']);
 
@@ -54,6 +54,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/posts/{post}/history', [PostController::class, 'history']);
     Route::get('/comments/{comment}/history', [CommentController::class, 'history']);
+    Route::patch('/posts/{post}/close', [PostController::class, 'close']);
+    Route::patch('/posts/{post}/reopen', [PostController::class, 'reopen']);
 
     Route::get('/me/bookmarks', [BookmarkController::class, 'index']);
     Route::delete('/bookmarks/{post}', [BookmarkController::class, 'destroy']);
