@@ -28,9 +28,6 @@ Route::prefix('auth')->group(function () {
     Route::get('/{provider}/callback', [SocialAuthController::class, 'callback']);
 });
 
-Route::get('/users/{user}', [UserController::class, 'show']);
-Route::get('/users/{user}/posts', [UserController::class, 'posts']);
-
 Route::prefix('search')->group(function () {
     Route::get('/', [SearchController::class, 'global']); // GET /api/search?q=laravel
     Route::get('/posts', [SearchController::class, 'posts']);  // GET /api/search/posts?q=laravel
@@ -39,6 +36,8 @@ Route::prefix('search')->group(function () {
 });
 
 Route::middleware('auth:sanctum')->group(function () {
+    
+    Route::post('/logout', [AuthController::class, 'logout']);
 
     Route::get('/me', [UserController::class, 'me']);
     Route::put('/me', [UserController::class, 'update']);
@@ -53,36 +52,17 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/users/{userId}/points', [PointsLogController::class, 'userHistory']);
     Route::post('/users/{userId}/points/recalculate', [PointsLogController::class, 'recalculate']);
 
-    Route::post('/posts', [PostController::class, 'store']);
-    Route::put('/posts/{post}', [PostController::class, 'update']);
-    Route::delete('/posts/{post}', [PostController::class, 'destroy']);
-
     Route::get('/posts/{post}/history', [PostController::class, 'history']);
     Route::get('/comments/{comment}/history', [CommentController::class, 'history']);
 
-    Route::post('/posts/{post}/comments', [CommentController::class, 'store']);
-    Route::put('/comments/{comment}', [CommentController::class, 'update']);
-    Route::delete('/comments/{comment}', [CommentController::class, 'destroy']);
-    // Accept / unaccept answer
-    Route::post('/posts/{post}/comments/{comment}/accept', [CommentController::class, 'accept']);
-    Route::delete('/posts/{post}/unaccept', [CommentController::class, 'unaccept']);
-
     Route::get('/me/bookmarks', [BookmarkController::class, 'index']);
-    Route::post('/bookmarks', [BookmarkController::class, 'store']);
     Route::delete('/bookmarks/{post}', [BookmarkController::class, 'destroy']);
     Route::get('/bookmarks/{post}/check', [BookmarkController::class, 'check']);
 
-    // Votes
-    Route::post('/votes', [VoteController::class, 'vote']);
-
-    // Likes (bookmark)
-    Route::post('/likes', [LikeController::class, 'like']);
-    Route::delete('/likes', [LikeController::class, 'unlike']);
+    // (bookmark)
     Route::get('/me/bookmarks/posts', [LikeController::class, 'likedPosts']);
     Route::get('/me/bookmarks/comments', [LikeController::class, 'likedComments']);
 
-    // Semua user bisa report
-    Route::post('/reports', [ReportController::class, 'store']);
     // Mod & Admin only
     Route::get('/reports', [ReportController::class, 'index']);
     Route::get('/reports/{report}', [ReportController::class, 'show']);
@@ -104,29 +84,46 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/notifications/read', [NotificationController::class, 'destroyRead']);
     Route::delete('/notifications/{notification}', [NotificationController::class, 'destroy']);
 
-    Route::post('/logout', [AuthController::class, 'logout']);
+    Route::middleware('throttle:write')->group(function () {
+        Route::post('/posts', [PostController::class, 'store']);
+        Route::put('/posts/{post}', [PostController::class, 'update']);
+        Route::delete('/posts/{post}', [PostController::class, 'destroy']);
+        Route::post('/posts/{post}/comments', [CommentController::class, 'store']);
+        Route::put('/comments/{comment}', [CommentController::class, 'update']);
+        Route::delete('/comments/{comment}', [CommentController::class, 'destroy']);
+        Route::post('/posts/{post}/comments/{comment}/accept', [CommentController::class, 'accept']);
+        Route::delete('/posts/{post}/unaccept', [CommentController::class, 'unaccept']);
+        Route::post('/reports', [ReportController::class, 'store']);
+    });
+
+    Route::middleware('throttle:interaction')->group(function () {
+        Route::post('/votes', [VoteController::class, 'vote']);
+        Route::post('/likes', [LikeController::class, 'like']);
+        Route::delete('/likes', [LikeController::class, 'unlike']);
+        Route::post('/bookmarks', [BookmarkController::class, 'store']);
+    
+    });
 });
 
-// CATEGORIES
-Route::get('/categories', [CategoryController::class, 'index']);
-Route::get('/categories/{category}', [CategoryController::class, 'show']);
+Route::middleware('throttle:api')->group(function () {
+    Route::get('/users/{user}', [UserController::class, 'show']);
+    Route::get('/users/{user}/posts', [UserController::class, 'posts']);
+    // FOLLOW
+    Route::get('/users/{user}/followers', [FollowController::class, 'followers']);
+    Route::get('/users/{user}/following', [FollowController::class, 'following']);
+    // CATEGORIES
+    Route::get('/categories', [CategoryController::class, 'index']);
+    Route::get('/categories/{category}', [CategoryController::class, 'show']);
+    // TAGS
+    Route::get('/tags', [TagController::class, 'index']);
+    Route::get('/tags/{tag}', [TagController::class, 'show']);
+    // COMMENTS
+    Route::get('/posts/{post}/comments', [CommentController::class, 'index']);
+    // POSTINGAN
+    Route::get('/posts', [PostController::class, 'index']);
+    Route::get('/posts/{post}', [PostController::class, 'show']);
+});
 
-// TAGS
-Route::get('/tags', [TagController::class, 'index']);
-Route::get('/tags/{tag}', [TagController::class, 'show']);
-
-// COMMENTS
-Route::get('/posts/{post}/comments', [CommentController::class, 'index']);
-
-// POSTINGAN
-Route::get('/posts', [PostController::class, 'index']);
-Route::get('/posts/{post}', [PostController::class, 'show']);
-
-// FOLLOW
-Route::get('/users/{user}/followers', [FollowController::class, 'followers']);
-Route::get('/users/{user}/following', [FollowController::class, 'following']);
-
-// RESET PASSWORD
 Route::middleware('throttle:forgot-password')->group(function () {
     Route::post('/forgot-password', [PasswordResetController::class, 'sendResetLink']);
     Route::post('/reset-password', [PasswordResetController::class, 'resetPassword']);

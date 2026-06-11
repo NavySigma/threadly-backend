@@ -82,8 +82,8 @@ class PostController extends Controller
         $post = Post::create([
             'user_id'     => $request->user()->id,
             'category_id' => $validated['category_id'],
-            'title'       => $validated['title'],
-            'body'        => $validated['body'],
+            'title'       => strip_tags($validated['title']),
+            'body'        => strip_tags($validated['body']),
         ]);
 
         // Attach tags jika ada
