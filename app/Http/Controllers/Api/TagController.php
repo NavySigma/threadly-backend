@@ -13,13 +13,13 @@ class TagController extends Controller
     // Public
     public function index(Request $request): JsonResponse
     {
-        $cacheKey = 'tags.index.' . md5($request->get('search', ''));
+        $cacheKey = 'tags.index.'.md5($request->get('search', ''));
 
         $tags = cache()->remember($cacheKey, now()->addMinutes(30), function () use ($request) {
             return Tag::when(
-                    $request->search,
-                    fn($q) => $q->where('name', 'like', "%{$request->search}%")
-                )
+                $request->search,
+                fn ($q) => $q->where('name', 'like', "%{$request->search}%")
+            )
                 ->orderByDesc('usage_count')
                 ->paginate(20);
         });
@@ -32,12 +32,13 @@ class TagController extends Controller
         $cacheKey = "tags.show.{$tag->id}";
 
         $tag = cache()->remember($cacheKey, now()->addMinutes(30), function () use ($tag) {
-            $tag->load(['posts' => fn($q) => $q
+            $tag->load(['posts' => fn ($q) => $q
                 ->where('status', 'open')
                 ->with(['user:id,username,avatar_url', 'category:id,name,slug'])
                 ->latest()
-                ->limit(10)
+                ->limit(10),
             ]);
+
             return $tag;
         });
 
@@ -65,6 +66,7 @@ class TagController extends Controller
         ]);
 
         $this->clearTagCache();
+
         return response()->json(['message' => 'Tag berhasil dibuat.', 'data' => $tag], 201);
     }
 
@@ -92,6 +94,7 @@ class TagController extends Controller
         $tag->update($validated);
 
         $this->clearTagCache($tag->id);
+
         return response()->json(['message' => 'Tag berhasil diupdate.', 'data' => $tag]);
     }
 
@@ -106,10 +109,11 @@ class TagController extends Controller
         $tag->delete();
 
         $this->clearTagCache($tag->id);
+
         return response()->json(['message' => 'Tag berhasil dihapus.']);
     }
 
-    private function clearTagCache(string $tagId = null): void
+    private function clearTagCache(?string $tagId = null): void
     {
         cache()->flush(); // flush semua karena index pakai md5
         if ($tagId) {

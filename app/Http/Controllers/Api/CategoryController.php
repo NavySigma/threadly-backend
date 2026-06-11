@@ -63,6 +63,7 @@ class CategoryController extends Controller
         $category = Category::create($validated);
 
         $this->clearCategoryCache();
+
         return response()->json(['message' => 'Category berhasil dibuat.', 'data' => $category], 201);
     }
 
@@ -96,6 +97,7 @@ class CategoryController extends Controller
         $category->update($validated);
 
         $this->clearCategoryCache($category->id);
+
         return response()->json(['message' => 'Category berhasil diupdate.', 'data' => $category]);
     }
 
@@ -116,10 +118,11 @@ class CategoryController extends Controller
         $category->delete();
 
         $this->clearCategoryCache($category->id);
+
         return response()->json(['message' => 'Category berhasil dihapus.']);
     }
 
-    private function clearCategoryCache(string $categoryId = null): void
+    private function clearCategoryCache(?string $categoryId = null): void
     {
         cache()->forget('categories.all');
         if ($categoryId) {
