@@ -2,13 +2,12 @@
 
 namespace App\Providers;
 
-use App\Models\Comment;
-use App\Models\Post;
 use Illuminate\Cache\RateLimiting\Limit;
-use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Request;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -25,6 +24,14 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Strict mode — prevent mass assignment vulnerability
+        Model::shouldBeStrict(! app()->isProduction());
+
+        // Log slow queries (> 1 detik)
+        DB::whenQueryingForLongerThan(1000, function () {
+            logger()->warning('Slow query detected');
+        });
+
         RateLimiter::for('api', function (Request $request) {
             return $request->user()
                 ? Limit::perMinute(60)->by($request->user()->id)

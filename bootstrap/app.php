@@ -16,6 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->redirectGuestsTo(fn () => response()->json(['message' => 'Unauthenticated.'], 401));
         $middleware->use([
             HandleCors::class,
+            \App\Http\Middleware\SecurityHeaders::class,
         ]);
         $middleware->throttleApi();
     })
