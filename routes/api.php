@@ -35,7 +35,7 @@ Route::prefix('search')->group(function () {
     Route::get('/tags', [SearchController::class, 'tags']);   // GET /api/search/tags?q=php
 });
 
-Route::middleware('auth:sanctum', 'banned')->group(function () {
+Route::middleware(['auth:sanctum', 'banned'])->group(function () {
     
     Route::post('/logout', [AuthController::class, 'logout']);
 
