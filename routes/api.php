@@ -18,8 +18,10 @@ use App\Http\Controllers\Api\VoteController;
 use App\Http\Controllers\AuthController;
 use Illuminate\Support\Facades\Route;
 
-Route::post('/register', [AuthController::class, 'register']);
-Route::post('/login', [AuthController::class, 'login']);
+Route::middleware('throttle:auth')->group(function () {
+    Route::post('/register', [AuthController::class, 'register']);
+    Route::post('/login', [AuthController::class, 'login']);
+});
 
 Route::prefix('auth')->group(function () {
     Route::get('/{provider}/redirect', [SocialAuthController::class, 'redirect']);
@@ -125,5 +127,7 @@ Route::get('/users/{user}/followers', [FollowController::class, 'followers']);
 Route::get('/users/{user}/following', [FollowController::class, 'following']);
 
 // RESET PASSWORD
-Route::post('/forgot-password', [PasswordResetController::class, 'sendResetLink']);
-Route::post('/reset-password', [PasswordResetController::class, 'resetPassword']);
+Route::middleware('throttle:forgot-password')->group(function () {
+    Route::post('/forgot-password', [PasswordResetController::class, 'sendResetLink']);
+    Route::post('/reset-password', [PasswordResetController::class, 'resetPassword']);
+});
