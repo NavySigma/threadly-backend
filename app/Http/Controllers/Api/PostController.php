@@ -13,8 +13,7 @@ class PostController extends Controller
 {
     public function index(Request $request): JsonResponse
 {
-    // Buat cache key unik berdasarkan semua filter
-    $cacheKey = 'posts.' . md5(json_encode($request->all()));
+    $cacheKey = 'posts.index.' . md5(json_encode($request->all()));
 
     $posts = cache()->remember($cacheKey, now()->addMinutes(5), function () use ($request) {
         return Post::with([
@@ -102,15 +101,18 @@ class PostController extends Controller
 
     public function show(Post $post): JsonResponse
     {
-        // Increment view count
-        $post->increment('view_count');
+    $cacheKey = "posts.show.{$post->id}";
 
+    $post = cache()->remember($cacheKey, now()->addMinutes(5), function () use ($post) {
+        $post->increment('view_count');
         $post->load([
             'user:id,username,avatar_url,reputation_points',
             'category:id,name,slug',
             'tags:id,name,slug,color',
             'acceptedAnswer.user:id,username,avatar_url',
         ]);
+        return $post;
+    });
 
         return response()->json(['data' => $post]);
     }
@@ -169,7 +171,7 @@ class PostController extends Controller
 
         $post->load(['user:id,username,avatar_url', 'category:id,name,slug', 'tags:id,name,slug,color']);
 
-        $this->clearPostCache();
+        $this->clearPostCache($post->id);
         return response()->json(['message' => 'Post berhasil diupdate.', 'data' => $post]);
     }
 
@@ -199,12 +201,23 @@ class PostController extends Controller
 
         $post->update(['status' => 'deleted']);
 
-        $this->clearPostCache();
+        $this->clearPostCache($post->id);
         return response()->json(['message' => 'Post berhasil dihapus.']);
     }
 
-    private function clearPostCache(): void
+    private function clearPostCache(string $postId = null): void
     {
-        cache()->flush(); // simple flush semua cache posts
+        if ($postId) {
+            cache()->forget("posts.show.{$postId}");
+        }
+        // Flush semua cache index posts
+        cache()->tags ? cache()->tags(['posts'])->flush() : $this->flushPostIndexCache();
+    }
+
+    private function flushPostIndexCache(): void
+    {
+        // Karena file cache tidak support tags, flush semua yang prefix posts.index
+        // Cara paling simple: flush seluruh cache
+        cache()->flush();
     }
 }
