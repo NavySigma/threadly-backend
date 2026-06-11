@@ -12,62 +12,59 @@ use Illuminate\Http\Request;
 class PostController extends Controller
 {
     public function index(Request $request): JsonResponse
-    {
-        $posts = Post::with([
+{
+    // Buat cache key unik berdasarkan semua filter
+    $cacheKey = 'posts.' . md5(json_encode($request->all()));
+
+    $posts = cache()->remember($cacheKey, now()->addMinutes(5), function () use ($request) {
+        return Post::with([
                 'user:id,username,avatar_url',
                 'category:id,name,slug',
                 'tags:id,name,slug,color'
             ])
             ->where('status', 'open')
-            // Filter pencarian
             ->when($request->search, fn($q) =>
                 $q->where('title', 'like', "%{$request->search}%")
                   ->orWhere('body', 'like', "%{$request->search}%")
             )
-            // Filter by kategori
             ->when($request->category_id, fn($q) =>
                 $q->where('category_id', $request->category_id)
             )
-            // Filter by kategori slug
             ->when($request->category_slug, fn($q) =>
                 $q->whereHas('category', fn($q) =>
                     $q->where('slug', $request->category_slug)
                 )
             )
-            // Filter by tag
             ->when($request->tag_id, fn($q) =>
                 $q->whereHas('tags', fn($q) =>
                     $q->where('tags.id', $request->tag_id)
                 )
             )
-            // Filter by tag slug
             ->when($request->tag_slug, fn($q) =>
                 $q->whereHas('tags', fn($q) =>
                     $q->where('tags.slug', $request->tag_slug)
                 )
             )
-            // Filter by user
             ->when($request->user_id, fn($q) =>
                 $q->where('user_id', $request->user_id)
             )
-            // Filter by status answered
             ->when($request->is_answered !== null, fn($q) =>
                 $q->where('is_answered', filter_var($request->is_answered, FILTER_VALIDATE_BOOLEAN))
             )
-            // Sorting
             ->when($request->sort, function($q) use ($request) {
                 match($request->sort) {
-                    'latest'   => $q->latest(),
-                    'oldest'   => $q->oldest(),
-                    'popular'  => $q->orderByDesc('view_count'),
-                    'votes'    => $q->orderByDesc('vote_score'),
-                    default    => $q->latest(),
+                    'latest'  => $q->latest(),
+                    'oldest'  => $q->oldest(),
+                    'popular' => $q->orderByDesc('view_count'),
+                    'votes'   => $q->orderByDesc('vote_score'),
+                    default   => $q->latest(),
                 };
             }, fn($q) => $q->latest())
             ->paginate(15);
+    });
 
-        return response()->json($posts);
-    }
+    return response()->json($posts);
+}
 
     public function store(Request $request): JsonResponse
     {
@@ -99,6 +96,7 @@ class PostController extends Controller
 
         $post->load(['user:id,username,avatar_url', 'category:id,name,slug', 'tags:id,name,slug,color']);
 
+        $this->clearPostCache();
         return response()->json(['message' => 'Post berhasil dibuat.', 'data' => $post], 201);
     }
 
@@ -171,6 +169,7 @@ class PostController extends Controller
 
         $post->load(['user:id,username,avatar_url', 'category:id,name,slug', 'tags:id,name,slug,color']);
 
+        $this->clearPostCache();
         return response()->json(['message' => 'Post berhasil diupdate.', 'data' => $post]);
     }
 
@@ -200,6 +199,12 @@ class PostController extends Controller
 
         $post->update(['status' => 'deleted']);
 
+        $this->clearPostCache();
         return response()->json(['message' => 'Post berhasil dihapus.']);
+    }
+
+    private function clearPostCache(): void
+    {
+        cache()->flush(); // simple flush semua cache posts
     }
 }

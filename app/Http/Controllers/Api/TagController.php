@@ -13,23 +13,27 @@ class TagController extends Controller
     // Public
     public function index(Request $request): JsonResponse
     {
-        $tags = Tag::when(
+        $cacheKey = 'tags.'.md5($request->get('search', ''));
+
+        $tags = cache()->remember($cacheKey, now()->addMinutes(30), function () use ($request) {
+            return Tag::when(
                 $request->search,
-                fn($q) => $q->where('name', 'like', "%{$request->search}%")
+                fn ($q) => $q->where('name', 'like', "%{$request->search}%")
             )
-            ->orderByDesc('usage_count')
-            ->paginate(20);
+                ->orderByDesc('usage_count')
+                ->paginate(20);
+        });
 
         return response()->json($tags);
     }
 
     public function show(Tag $tag): JsonResponse
     {
-        $tag->load(['posts' => fn($q) => $q
+        $tag->load(['posts' => fn ($q) => $q
             ->where('status', 'open')
             ->with(['user:id,username,avatar_url', 'category:id,name,slug'])
             ->latest()
-            ->limit(10)
+            ->limit(10),
         ]);
 
         return response()->json(['data' => $tag]);
@@ -39,7 +43,7 @@ class TagController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'name'  => 'required|string|max:50',
+            'name' => 'required|string|max:50',
             'color' => 'nullable|string|regex:/^#[0-9A-Fa-f]{6}$/',
         ]);
 
@@ -50,22 +54,23 @@ class TagController extends Controller
         }
 
         $tag = Tag::create([
-            'name'  => $validated['name'],
-            'slug'  => $slug,
+            'name' => $validated['name'],
+            'slug' => $slug,
             'color' => $validated['color'] ?? null,
         ]);
 
+        cache()->flush();
         return response()->json(['message' => 'Tag berhasil dibuat.', 'data' => $tag], 201);
     }
 
     public function update(Request $request, Tag $tag): JsonResponse
     {
-        if (!$request->user()->isModeratorOrAdmin()) {
+        if (! $request->user()->isModeratorOrAdmin()) {
             return response()->json(['message' => 'Forbidden.'], 403);
         }
 
         $validated = $request->validate([
-            'name'  => 'sometimes|string|max:50',
+            'name' => 'sometimes|string|max:50',
             'color' => 'nullable|string|regex:/^#[0-9A-Fa-f]{6}$/',
         ]);
 
@@ -81,12 +86,13 @@ class TagController extends Controller
 
         $tag->update($validated);
 
+        cache()->flush();
         return response()->json(['message' => 'Tag berhasil diupdate.', 'data' => $tag]);
     }
 
     public function destroy(Request $request, Tag $tag): JsonResponse
     {
-        if (!$request->user()->isModeratorOrAdmin()) {
+        if (! $request->user()->isModeratorOrAdmin()) {
             return response()->json(['message' => 'Forbidden.'], 403);
         }
 
@@ -94,6 +100,7 @@ class TagController extends Controller
         $tag->posts()->detach();
         $tag->delete();
 
+        cache()->flush();
         return response()->json(['message' => 'Tag berhasil dihapus.']);
     }
 }

@@ -13,20 +13,22 @@ class CategoryController extends Controller
     // Public - semua bisa lihat
     public function index(): JsonResponse
     {
-        $categories = Category::with('children')
-            ->whereNull('parent_id') // root only
-            ->get();
+        $categories = cache()->remember('categories.all', now()->addHours(1), function () {
+            return Category::with('children')
+                ->whereNull('parent_id')
+                ->get();
+        });
 
         return response()->json(['data' => $categories]);
     }
 
     public function show(Category $category): JsonResponse
     {
-        $category->load(['children', 'posts' => fn($q) => $q
+        $category->load(['children', 'posts' => fn ($q) => $q
             ->where('status', 'open')
             ->with(['user:id,username,avatar_url', 'tags:id,name,slug,color'])
             ->latest()
-            ->limit(10)
+            ->limit(10),
         ]);
 
         return response()->json(['data' => $category]);
@@ -35,14 +37,14 @@ class CategoryController extends Controller
     // Admin only
     public function store(Request $request): JsonResponse
     {
-        if (!$request->user()->isAdmin()) {
+        if (! $request->user()->isAdmin()) {
             return response()->json(['message' => 'Forbidden.'], 403);
         }
 
         $validated = $request->validate([
-            'name'        => 'required|string|max:100',
+            'name' => 'required|string|max:100',
             'description' => 'nullable|string',
-            'parent_id'   => 'nullable|uuid|exists:categories,id',
+            'parent_id' => 'nullable|uuid|exists:categories,id',
         ]);
 
         $validated['slug'] = Str::slug($validated['name']);
@@ -54,19 +56,20 @@ class CategoryController extends Controller
 
         $category = Category::create($validated);
 
+        cache()->forget('categories.all');
         return response()->json(['message' => 'Category berhasil dibuat.', 'data' => $category], 201);
     }
 
     public function update(Request $request, Category $category): JsonResponse
     {
-        if (!$request->user()->isAdmin()) {
+        if (! $request->user()->isAdmin()) {
             return response()->json(['message' => 'Forbidden.'], 403);
         }
 
         $validated = $request->validate([
-            'name'        => 'sometimes|string|max:100',
+            'name' => 'sometimes|string|max:100',
             'description' => 'nullable|string',
-            'parent_id'   => 'nullable|uuid|exists:categories,id',
+            'parent_id' => 'nullable|uuid|exists:categories,id',
         ]);
 
         if (isset($validated['name'])) {
@@ -86,12 +89,13 @@ class CategoryController extends Controller
 
         $category->update($validated);
 
+        cache()->forget('categories.all');
         return response()->json(['message' => 'Category berhasil diupdate.', 'data' => $category]);
     }
 
     public function destroy(Request $request, Category $category): JsonResponse
     {
-        if (!$request->user()->isAdmin()) {
+        if (! $request->user()->isAdmin()) {
             return response()->json(['message' => 'Forbidden.'], 403);
         }
 
@@ -105,6 +109,7 @@ class CategoryController extends Controller
 
         $category->delete();
 
+        cache()->forget('categories.all');
         return response()->json(['message' => 'Category berhasil dihapus.']);
     }
 }
