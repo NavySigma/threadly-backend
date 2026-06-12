@@ -16,12 +16,18 @@ class SocialAuthController extends Controller
     public function __construct(private NotificationService $notificationService) {}
 
     // Redirect ke Google/GitHub
-    public function redirect(string $provider)
+    public function redirect(string $provider, \Illuminate\Http\Request $request)
     {
         $this->validateProvider($provider);
 
+        // Ambil URL frontend dari query parameter, jika ada
+        $state = base64_encode(json_encode([
+            'frontend_url' => $request->query('frontend_url')
+        ]));
+
         return Socialite::driver($provider)
             ->stateless()
+            ->with(['state' => $state])
             ->redirect();
     }
 
@@ -88,6 +94,21 @@ class SocialAuthController extends Controller
 
             $token       = $user->createToken('auth_token')->plainTextToken;
             $frontendUrl = env('FRONTEND_URL', 'http://localhost:5173');
+
+            // Coba ekstrak frontend_url dari state (jika dikirim dari lokal)
+            $request = request();
+            if ($request->has('state')) {
+                try {
+                    $stateData = json_decode(base64_decode($request->query('state')), true);
+                    $passedUrl = $stateData['frontend_url'] ?? null;
+                    // Hanya izinkan jika benar-benar berawalan http://localhost
+                    if ($passedUrl && str_starts_with($passedUrl, 'http://localhost')) {
+                        $frontendUrl = rtrim($passedUrl, '/');
+                    }
+                } catch (\Exception $e) {
+                    // Abaikan jika state tidak bisa di-decode
+                }
+            }
 
             return redirect("{$frontendUrl}/auth/callback?token={$token}");
 

@@ -40,6 +40,11 @@ class PasswordResetController extends Controller
 
         // Buat reset URL ke frontend
         $frontendUrl = rtrim(env('FRONTEND_URL', 'http://localhost:5173'), '/');
+        $passedUrl = $request->input('frontend_url');
+        if ($passedUrl && str_starts_with($passedUrl, 'http://localhost')) {
+            $frontendUrl = rtrim($passedUrl, '/');
+        }
+
         $resetUrl    = "{$frontendUrl}/reset-password?token={$token}&email={$request->email}";
 
         // Kirim email
