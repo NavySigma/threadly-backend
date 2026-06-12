@@ -43,33 +43,39 @@ class AppServiceProvider extends ServiceProvider
             logger()->warning('Slow query detected');
         });
 
-        // User login — maksimal 5x/menit per IP
-        RateLimiter::for('auth', function (Request $request) {
-            return Limit::perMinute(5)->by($request->ip());
+        // Saat local/testing, naikkan limit agar Cypress test tidak kena throttle
+        $isLocal = app()->isLocal() || app()->environment('testing');
+
+        // User login — maksimal 5x/menit per IP (prod), 500x/menit (local)
+        RateLimiter::for('auth', function (Request $request) use ($isLocal) {
+            return Limit::perMinute($isLocal ? 500 : 5)->by($request->ip());
         });
 
-        // Forgot password — maksimal 3x/menit per IP
-        RateLimiter::for('forgot-password', function (Request $request) {
-            return Limit::perMinute(3)->by($request->ip());
+        // Forgot password — maksimal 3x/menit per IP (prod), 500x/menit (local)
+        RateLimiter::for('forgot-password', function (Request $request) use ($isLocal) {
+            return Limit::perMinute($isLocal ? 500 : 3)->by($request->ip());
         });
 
-        // Vote & like — maksimal 30x/menit per user
-        RateLimiter::for('interaction', function (Request $request) {
-            return Limit::perMinute(30)->by($request->user()?->id ?? $request->ip());
+        // Vote & like — maksimal 30x/menit per user (prod), 500x/menit (local)
+        RateLimiter::for('interaction', function (Request $request) use ($isLocal) {
+            return Limit::perMinute($isLocal ? 500 : 30)->by($request->user()?->id ?? $request->ip());
         });
 
-        // Buat post & comment — maksimal 10x/menit per user
-        RateLimiter::for('write', function (Request $request) {
-            return Limit::perMinute(10)->by($request->user()?->id ?? $request->ip());
+        // Buat post & comment — maksimal 10x/menit per user (prod), 500x/menit (local)
+        RateLimiter::for('write', function (Request $request) use ($isLocal) {
+            return Limit::perMinute($isLocal ? 500 : 10)->by($request->user()?->id ?? $request->ip());
         });
 
-        // Search — maksimal 30x/menit per IP
-        RateLimiter::for('search', function (Request $request) {
-            return Limit::perMinute(30)->by($request->ip());
+        // Search — maksimal 30x/menit per IP (prod), 500x/menit (local)
+        RateLimiter::for('search', function (Request $request) use ($isLocal) {
+            return Limit::perMinute($isLocal ? 500 : 30)->by($request->ip());
         });
 
-        // API umum — 60x/menit user login, 20x/menit guest
-        RateLimiter::for('api', function (Request $request) {
+        // API umum — 60x/menit user login, 20x/menit guest (prod), 500x/menit (local)
+        RateLimiter::for('api', function (Request $request) use ($isLocal) {
+            if ($isLocal) {
+                return Limit::perMinute(500)->by($request->user()?->id ?? $request->ip());
+            }
             return $request->user()
                 ? Limit::perMinute(60)->by($request->user()->id)
                 : Limit::perMinute(20)->by($request->ip());
