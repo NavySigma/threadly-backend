@@ -16,11 +16,11 @@ class AuthController extends Controller
 
     public function register(Request $request)
     {
-         $validated = $request->validate([
-        'username' => 'required|string|min:3|max:100|alpha_dash|unique:users',
-        'email'    => 'required|email:rfc,dns|max:255|unique:users', // ← rfc,dns validasi lebih ketat
-        'password' => 'required|string|min:8|confirmed|regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/', // ← minimal 1 huruf besar, kecil, angka
-    ]);
+        $validated = $request->validate([
+            'username' => 'required|string|min:3|max:100|alpha_dash|unique:users',
+            'email' => 'required|email:rfc|max:255|unique:users',
+            'password' => 'required|string|min:8|confirmed|regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/', // ← minimal 1 huruf besar, kecil, angka
+        ]);
 
         try {
             $user = DB::transaction(function () use ($validated) {
@@ -29,7 +29,7 @@ class AuthController extends Controller
                     'email' => $validated['email'],
                     'password_hash' => Hash::make($validated['password']),
                     'reputation_points' => 1,
-                    'level'             => 1,
+                    'level' => 1,
                 ]);
 
                 $this->notificationService->send(
@@ -67,7 +67,7 @@ class AuthController extends Controller
     public function login(Request $request)
     {
         $validated = $request->validate([
-            'email'    => 'required|email|max:255',
+            'email' => 'required|email|max:255',
             'password' => 'required|string|max:255',
         ]);
 
@@ -99,7 +99,7 @@ class AuthController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Berhasil logout. Token telah dihapus.'
+            'message' => 'Berhasil logout. Token telah dihapus.',
         ], 200);
     }
 }

@@ -271,14 +271,6 @@ class PostController extends Controller
         if ($postId) {
             cache()->forget("posts.show.{$postId}");
         }
-        // Flush semua cache index posts
-        cache()->tags ? cache()->tags(['posts'])->flush() : $this->flushPostIndexCache();
-    }
-
-    private function flushPostIndexCache(): void
-    {
-        // Karena file cache tidak support tags, flush semua yang prefix posts.index
-        // Cara paling simple: flush seluruh cache
         cache()->flush();
     }
 }

@@ -16,7 +16,7 @@ class UserSeeder extends Seeder
             ['email' => 'admin@forum.com'],
             [
                 'username'      => 'superadmin',
-                'password_hash' => Hash::make('123'),
+                'password_hash' => Hash::make('Admin123'),
                 'bio'           => 'I am not a King I am not a God, I am Atomic.',
                 'reputation_points' => 9999
             ]
