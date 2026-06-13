@@ -35,9 +35,11 @@ class UserController extends Controller
                 'id', 'username', 'avatar_url', 'bio', 'reputation_points', 'level', 'created_at'
             ]);
 
-            $data['followers_count'] = $user->followers()->count();
-            $data['following_count'] = $user->following()->count();
-            $data['posts_count']     = $user->posts()->where('status', 'open')->count();
+            $data['level_title']       = $user->level_title;
+            $data['next_level_points'] = $user->next_level_points;
+            $data['followers_count']   = $user->followers()->count();
+            $data['following_count']   = $user->following()->count();
+            $data['posts_count']       = $user->posts()->where('status', 'open')->count();
 
             return $data;
         });
@@ -55,11 +57,12 @@ class UserController extends Controller
                 'sometimes', 'string', 'min:3', 'max:100', 'alpha_dash',
                 Rule::unique('users', 'username')->ignore($user->id),
             ],
-            'avatar_url' => 'sometimes|nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'avatar'     => 'sometimes|nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'avatar_url' => 'sometimes|nullable|string|max:2048',
             'bio'        => 'sometimes|nullable|string|max:500',
         ]);
 
-        // Handle upload avatar
+        // Handle upload avatar file
         if ($request->hasFile('avatar')) {
             // Hapus avatar lama kalau bukan URL eksternal (Google/GitHub)
             if ($user->avatar_url && str_contains($user->avatar_url, 'storage/avatars')) {

@@ -28,6 +28,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        \Illuminate\Support\Facades\Gate::define('viewApiDocs', function (?User $user) {
+            return true; // Ubah ini jika ingin membatasi akses (misal: hanya role admin)
+        });
         // Strict mode — prevent mass assignment vulnerability
         Model::shouldBeStrict(! app()->isProduction());
 
