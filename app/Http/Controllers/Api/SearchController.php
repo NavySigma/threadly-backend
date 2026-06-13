@@ -7,40 +7,26 @@ use App\Models\Category;
 use App\Models\Post;
 use App\Models\Tag;
 use App\Models\User;
+use App\Services\SearchService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class SearchController extends Controller
 {
-    // Global search semua sekaligus
+    public function __construct(private SearchService $searchService) {}
+
     public function global(Request $request): JsonResponse
     {
         $request->validate([
-            'q' => 'required|string|min:1|max:100',
+            'q' => 'required|string|min:1|max:100', // ← min 1 huruf
         ]);
 
         $q = $request->q;
+        $terms = $this->searchService->buildSearchTerms($q);
 
-        $posts = Post::where('status', 'open')
-            ->where(fn($query) => $query
-                ->where('title', 'like', "%{$q}%")
-                ->orWhere('body', 'like', "%{$q}%")
-            )
-            ->with(['user:id,username,avatar_url', 'category:id,name,slug', 'tags:id,name,slug,color'])
-            ->latest()
-            ->limit(5)
-            ->get();
-
-        $users = User::where('username', 'like', "%{$q}%")
-            ->select('id', 'username', 'avatar_url', 'reputation_points', 'level')
-            ->limit(5)
-            ->get();
-
-        $tags = Tag::where('name', 'like', "%{$q}%")
-            ->select('id', 'name', 'slug', 'color', 'usage_count')
-            ->orderByDesc('usage_count')
-            ->limit(5)
-            ->get();
+        $posts = $this->searchPosts($q, $terms)->limit(5)->get();
+        $users = $this->searchUsers($q, $terms)->limit(5)->get();
+        $tags = $this->searchTags($q, $terms)->limit(5)->get();
 
         $categories = Category::where('name', 'like', "%{$q}%")
             ->select('id', 'name', 'slug', 'description')
@@ -49,88 +35,68 @@ class SearchController extends Controller
 
         return response()->json([
             'query' => $q,
-            'data'  => [
-                'posts'      => $posts,
-                'users'      => $users,
-                'tags'       => $tags,
-                'categories' => $categories,
-            ],
+            'data' => compact('posts', 'users', 'tags', 'categories'),
         ]);
     }
 
-    // Search & filter post
     public function posts(Request $request): JsonResponse
     {
         $request->validate([
-            'q'             => 'nullable|string|min:1|max:100',
-            'category_id'   => 'nullable|uuid|exists:categories,id',
+            'q' => 'nullable|string|min:1|max:100',
+            'category_id' => 'nullable|uuid|exists:categories,id',
             'category_slug' => 'nullable|string|exists:categories,slug',
-            'tag_id'        => 'nullable|uuid|exists:tags,id',
-            'tag_slug'      => 'nullable|string|exists:tags,slug',
-            'user_id'       => 'nullable|uuid|exists:users,id',
-            'is_answered'   => 'nullable|boolean',
-            'sort'          => 'nullable|in:latest,oldest,popular,votes',
+            'tag_id' => 'nullable|uuid|exists:tags,id',
+            'tag_slug' => 'nullable|string|exists:tags,slug',
+            'user_id' => 'nullable|uuid|exists:users,id',
+            'is_answered' => 'nullable|boolean',
+            'sort' => 'nullable|in:latest,oldest,popular,votes',
         ]);
 
-        $cacheKey = 'search.posts.' . md5(json_encode($request->all()));
+        $q = $request->q;
+        $terms = $q ? $this->searchService->buildSearchTerms($q) : null;
 
-        $posts = cache()->remember($cacheKey, now()->addMinutes(5), function () use ($request) {
-        return Post::where('status', 'open')
-            ->when($request->q, fn($query) =>
-                $query->where('title', 'like', "%{$request->q}%")
-                      ->orWhere('body', 'like', "%{$request->q}%")
+        $query = Post::where('status', 'open')
+            ->when($q && $terms, fn ($query) => $this->applyPostSearch($query, $q, $terms))
+            ->when($request->category_id, fn ($q) => $q->where('category_id', $request->category_id)
             )
-            ->when($request->category_id, fn($query) =>
-                $query->where('category_id', $request->category_id)
+            ->when($request->category_slug, fn ($q) => $q->whereHas('category', fn ($q) => $q->where('slug', $request->category_slug)
             )
-            ->when($request->category_slug, fn($query) =>
-                $query->whereHas('category', fn($q) =>
-                    $q->where('slug', $request->category_slug)
-                )
             )
-            ->when($request->tag_id, fn($query) =>
-                $query->whereHas('tags', fn($q) =>
-                    $q->where('tags.id', $request->tag_id)
-                )
+            ->when($request->tag_id, fn ($q) => $q->whereHas('tags', fn ($q) => $q->where('tags.id', $request->tag_id)
             )
-            ->when($request->tag_slug, fn($query) =>
-                $query->whereHas('tags', fn($q) =>
-                    $q->where('tags.slug', $request->tag_slug)
-                )
             )
-            ->when($request->user_id, fn($query) =>
-                $query->where('user_id', $request->user_id)
+            ->when($request->tag_slug, fn ($q) => $q->whereHas('tags', fn ($q) => $q->where('tags.slug', $request->tag_slug)
             )
-            ->when($request->is_answered !== null, fn($query) =>
-                $query->where('is_answered', filter_var($request->is_answered, FILTER_VALIDATE_BOOLEAN))
             )
-            ->when($request->sort, function($query) use ($request) {
-                match($request->sort) {
-                    'latest'  => $query->latest(),
-                    'oldest'  => $query->oldest(),
-                    'popular' => $query->orderByDesc('view_count'),
-                    'votes'   => $query->orderByDesc('vote_score'),
-                    default   => $query->latest(),
+            ->when($request->user_id, fn ($q) => $q->where('user_id', $request->user_id)
+            )
+            ->when($request->is_answered !== null, fn ($q) => $q->where('is_answered', filter_var($request->is_answered, FILTER_VALIDATE_BOOLEAN))
+            )
+            ->when($request->sort, function ($q) use ($request) {
+                match ($request->sort) {
+                    'latest' => $q->latest(),
+                    'oldest' => $q->oldest(),
+                    'popular' => $q->orderByDesc('view_count'),
+                    'votes' => $q->orderByDesc('vote_score'),
+                    default => $q->latest(),
                 };
-            }, fn($query) => $query->latest())
-            ->with(['user:id,username,avatar_url', 'category:id,name,slug', 'tags:id,name,slug,color'])
-            ->paginate(15);
-        });
+            }, fn ($q) => $q->latest())
+            ->with(['user:id,username,avatar_url', 'category:id,name,slug', 'tags:id,name,slug,color']);
 
-        return response()->json($posts);
+        return response()->json($query->paginate(15));
     }
 
-    // Search user
     public function users(Request $request): JsonResponse
     {
         $request->validate([
             'q' => 'required|string|min:1|max:100',
         ]);
 
-        $users = User::where('username', 'like', "%{$request->q}%")
-            ->select('id', 'username', 'avatar_url', 'reputation_points', 'level', 'created_at')
+        $terms = $this->searchService->buildSearchTerms($request->q);
+
+        $users = $this->searchUsers($request->q, $terms)
             ->withCount([
-                'posts'     => fn($q) => $q->where('status', 'open'),
+                'posts' => fn ($q) => $q->where('status', 'open'),
                 'followers',
             ])
             ->paginate(15);
@@ -138,18 +104,89 @@ class SearchController extends Controller
         return response()->json($users);
     }
 
-    // Search tag
     public function tags(Request $request): JsonResponse
     {
         $request->validate([
             'q' => 'required|string|min:1|max:100',
         ]);
 
-        $tags = Tag::where('name', 'like', "%{$request->q}%")
-            ->select('id', 'name', 'slug', 'color', 'usage_count')
-            ->orderByDesc('usage_count')
-            ->paginate(20);
+        $terms = $this->searchService->buildSearchTerms($request->q);
+
+        $tags = $this->searchTags($request->q, $terms)->paginate(20);
 
         return response()->json($tags);
+    }
+
+    // ─── Private helpers ────────────────────────────────────
+
+    private function applyPostSearch($query, string $q, array $terms)
+    {
+        return $query->where(function ($q) use ($terms) {
+            // 1. Fulltext search
+            $q->whereRaw(
+                'MATCH(title, body) AGAINST(? IN BOOLEAN MODE)',
+                [$terms['fulltext']]
+            )
+            // 2. Fallback LIKE tiap kata
+                ->orWhere(function ($q) use ($terms) {
+                    foreach ($terms['words'] as $word) {
+                        $q->orWhere('title', 'like', "%{$word}%")
+                            ->orWhere('body', 'like', "%{$word}%");
+                    }
+                })
+            // 3. Inisial kata — cari username yang huruf awalnya cocok
+                ->orWhere(function ($q) use ($terms) {
+                    foreach ($terms['initials'] as $initial) {
+                        $q->orWhere('title', 'like', "{$initial}%");
+                    }
+                });
+        });
+    }
+
+    private function searchPosts(string $q, array $terms)
+    {
+        return Post::where('status', 'open')
+            ->where(function ($query) use ($q, $terms) {
+                $this->applyPostSearch($query, $q, $terms);
+            })
+            ->with(['user:id,username,avatar_url', 'category:id,name,slug', 'tags:id,name,slug,color'])
+            ->latest();
+    }
+
+    private function searchUsers(string $q, array $terms)
+    {
+        return User::select('id', 'username', 'avatar_url', 'reputation_points', 'level', 'created_at')
+            ->where(function ($query) use ($q, $terms) {
+                // 1. Fulltext
+                $query->whereRaw(
+                    'MATCH(username) AGAINST(? IN BOOLEAN MODE)',
+                    [$terms['fulltext']]
+                )
+                // 2. LIKE
+                    ->orWhere('username', 'like', "%{$q}%")
+                // 3. Inisial — "mu" bisa match "malik udin"
+                    ->orWhere(function ($q) use ($terms) {
+                        foreach ($terms['initials'] as $initial) {
+                            $q->orWhere('username', 'like', "{$initial}%");
+                        }
+                    });
+            });
+    }
+
+    private function searchTags(string $q, array $terms)
+    {
+        return Tag::select('id', 'name', 'slug', 'color', 'usage_count')
+            ->where(function ($query) use ($q, $terms) {
+                // 1. Fulltext
+                $query->whereRaw(
+                    'MATCH(name) AGAINST(? IN BOOLEAN MODE)',
+                    [$terms['fulltext']]
+                )
+                // 2. LIKE
+                    ->orWhere('name', 'like', "%{$q}%")
+                // 3. Starts with
+                    ->orWhere('name', 'like', "{$q}%");
+            })
+            ->orderByDesc('usage_count');
     }
 }
