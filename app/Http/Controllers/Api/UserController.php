@@ -68,16 +68,10 @@ class UserController extends Controller
     public function updatePassword(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'current_password' => 'required|string',
             'new_password'     => 'required|string|min:8|confirmed', // butuh new_password_confirmation
         ]);
 
         $user = $request->user();
-
-        // Verifikasi password lama
-        if (!Hash::check($validated['current_password'], $user->password_hash)) {
-            return response()->json(['message' => 'Password lama tidak sesuai.'], 422);
-        }
 
         $user->update([
             'password_hash' => Hash::make($validated['new_password']),
