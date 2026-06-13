@@ -93,11 +93,12 @@ class PostController extends Controller
         return response()->json(['message' => 'Post berhasil dibuat.', 'data' => $post], 201);
     }
 
-    public function show(Post $post): JsonResponse
+    public function show(Request $request, Post $post): JsonResponse
     {
         $cacheKey = "posts.show.{$post->id}";
 
-        $post = cache()->remember($cacheKey, now()->addMinutes(5), function () use ($post) {
+        // Cache hanya data post — tidak include data per user
+        $postData = cache()->remember($cacheKey, now()->addMinutes(5), function () use ($post) {
             $post->increment('view_count');
             $post->load([
                 'user:id,username,avatar_url,reputation_points',
@@ -106,28 +107,27 @@ class PostController extends Controller
                 'acceptedAnswer.user:id,username,avatar_url',
             ]);
 
-            $data = $post->toArray();
-            // Tambah status like & bookmark kalau user login
-            if ($request->user()) {
-                $data['is_liked'] = Like::where('user_id', $request->user()->id)
-                    ->where('target_id', $post->id)
-                    ->where('target_type', 'post')
-                    ->exists();
-
-                $data['is_bookmarked'] = Bookmark::where('user_id', $request->user()->id)
-                    ->where('post_id', $post->id)
-                    ->exists();
-
-                $data['user_vote'] = Vote::where('user_id', $request->user()->id)
-                    ->where('target_id', $post->id)
-                    ->where('target_type', 'post')
-                    ->value('vote_type'); // null, 'upvote', atau 'downvote'
-            }
-
-            return $post;
+            return $post->toArray();
         });
 
-        return response()->json(['data' => $post]);
+        // Data per user — di-query langsung, tidak di-cache
+        if ($request->user()) {
+            $postData['is_liked'] = Like::where('user_id', $request->user()->id)
+                ->where('target_id', $post->id)
+                ->where('target_type', 'post')
+                ->exists();
+
+            $postData['is_bookmarked'] = Bookmark::where('user_id', $request->user()->id)
+                ->where('post_id', $post->id)
+                ->exists();
+
+            $postData['user_vote'] = Vote::where('user_id', $request->user()->id)
+                ->where('target_id', $post->id)
+                ->where('target_type', 'post')
+                ->value('vote_type');
+        }
+
+        return response()->json(['data' => $postData]);
     }
 
     public function update(Request $request, Post $post): JsonResponse
