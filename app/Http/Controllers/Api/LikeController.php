@@ -110,4 +110,19 @@ class LikeController extends Controller
 
         return response()->json($comments);
     }
+
+    public function check(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'target_type' => 'required|in:post,comment',
+            'target_id'   => 'required|uuid',
+        ]);
+
+        $isLiked = Like::where('user_id', $request->user()->id)
+            ->where('target_id', $validated['target_id'])
+            ->where('target_type', $validated['target_type'])
+            ->exists();
+
+        return response()->json(['is_liked' => $isLiked]);
+    }
 }

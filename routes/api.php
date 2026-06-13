@@ -65,6 +65,7 @@ Route::middleware(['auth:sanctum', 'banned'])->group(function () {
     // (bookmark)
     Route::get('/me/bookmarks/posts', [LikeController::class, 'likedPosts']);
     Route::get('/me/bookmarks/comments', [LikeController::class, 'likedComments']);
+    Route::get('/likes/check', [LikeController::class, 'check']);
 
     // Mod & Admin only
     Route::get('/reports', [ReportController::class, 'index']);
