@@ -8,6 +8,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Storage;
 
 class UserController extends Controller
 {
@@ -54,9 +55,24 @@ class UserController extends Controller
                 'sometimes', 'string', 'min:3', 'max:100', 'alpha_dash',
                 Rule::unique('users', 'username')->ignore($user->id),
             ],
-            'avatar_url' => 'sometimes|nullable|url|max:500',
+            'avatar_url' => 'sometimes|nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
             'bio'        => 'sometimes|nullable|string|max:500',
         ]);
+
+        // Handle upload avatar
+        if ($request->hasFile('avatar')) {
+            // Hapus avatar lama kalau bukan URL eksternal (Google/GitHub)
+            if ($user->avatar_url && str_contains($user->avatar_url, 'storage/avatars')) {
+                $oldPath = str_replace(asset('storage') . '/', '', $user->avatar_url);
+                Storage::disk('public')->delete($oldPath);
+            }
+
+            // Simpan avatar baru
+            $path = $request->file('avatar')->store('avatars', 'public');
+            $validated['avatar_url'] = asset("storage/{$path}");
+        }
+
+        unset($validated['avatar']);
 
         $user->update($validated);
 

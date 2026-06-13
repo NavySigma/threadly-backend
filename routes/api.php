@@ -40,6 +40,7 @@ Route::middleware(['auth:sanctum', 'banned'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
 
     Route::get('/me', [UserController::class, 'me']);
+    Route::post('/me', [UserController::class, 'update']);
     Route::put('/me', [UserController::class, 'update']);
     Route::put('/me/password', [UserController::class, 'updatePassword']);
 
