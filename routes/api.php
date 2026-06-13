@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\SearchController;
 use App\Http\Controllers\Api\TagController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\VoteController;
+use App\Http\Controllers\Api\StatsController;
 use App\Http\Controllers\AuthController;
 use Illuminate\Support\Facades\Route;
 
@@ -126,6 +127,7 @@ Route::middleware('throttle:api')->group(function () {
     // POSTINGAN
     Route::get('/posts', [PostController::class, 'index']);
     Route::get('/posts/{post}', [PostController::class, 'show']);
+    Route::get('/stats/community', [StatsController::class, 'community']);
 });
 
 Route::middleware('throttle:forgot-password')->group(function () {
