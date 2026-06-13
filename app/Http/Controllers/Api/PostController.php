@@ -21,6 +21,7 @@ class PostController extends Controller
                 'category:id,name,slug',
                 'tags:id,name,slug,color',
             ])
+                ->withCount('comments')
                 ->where('status', 'open')
                 ->when($request->search, fn ($q) => $q->where('title', 'like', "%{$request->search}%")
                     ->orWhere('body', 'like', "%{$request->search}%")
