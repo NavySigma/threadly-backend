@@ -52,19 +52,7 @@ class PostController extends Controller
             }, fn ($q) => $q->latest())
             ->paginate(15);
 
-        $community = cache()->remember('community.stats', now()->addMinutes(5), function () {
-            return [
-                'users_online' => User::where('updated_at', '>=', now()->subMinutes(5))->count(),
-                'questions'    => Post::where('status', 'open')->count(),
-                'answers'      => Comment::count(),
-                'upvotes'      => Vote::where('vote_type', 'up')->count(),
-            ];
-        });
-
-        $response = $posts->toArray();
-        $response['community'] = $community;
-
-        return response()->json($response);
+        return response()->json($posts->toArray());
     }
 
     public function store(Request $request): JsonResponse

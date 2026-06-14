@@ -12,6 +12,15 @@ use Illuminate\Support\Facades\Storage;
 
 class UserController extends Controller
 {
+    // Daftar semua user (public)
+    public function index(Request $request): JsonResponse
+    {
+        $users = User::select(['id', 'username', 'avatar_url', 'bio', 'reputation_points', 'level', 'created_at'])
+            ->paginate(20);
+
+        return response()->json($users);
+    }
+
     // Lihat profile sendiri
     public function me(Request $request): JsonResponse
     {

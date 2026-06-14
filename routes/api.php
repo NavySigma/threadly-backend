@@ -111,6 +111,7 @@ Route::middleware(['auth:sanctum', 'banned'])->group(function () {
 });
 
 Route::middleware('throttle:api')->group(function () {
+    Route::get('/users', [UserController::class, 'index']);
     Route::get('/users/{user}', [UserController::class, 'show']);
     Route::get('/users/{user}/posts', [UserController::class, 'posts']);
     // FOLLOW
