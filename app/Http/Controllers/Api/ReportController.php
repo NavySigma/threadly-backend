@@ -192,4 +192,16 @@ class ReportController extends Controller
 
         return response()->json(['message' => $message, 'data' => $report]);
     }
+
+    // Mod & Admin — hard delete laporan
+    public function destroy(Request $request, Report $report): JsonResponse
+    {
+        if (!$request->user()->isModeratorOrAdmin()) {
+            return response()->json(['message' => 'Forbidden.'], 403);
+        }
+
+        $report->delete();
+
+        return response()->json(['message' => 'Laporan berhasil dihapus.']);
+    }
 }

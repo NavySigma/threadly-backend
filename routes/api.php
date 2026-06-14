@@ -74,6 +74,7 @@ Route::middleware(['auth:sanctum', 'banned'])->group(function () {
     Route::get('/reports', [ReportController::class, 'index']);
     Route::get('/reports/{report}', [ReportController::class, 'show']);
     Route::patch('/reports/{report}/resolve', [ReportController::class, 'resolve']);
+    Route::delete('/reports/{report}', [ReportController::class, 'destroy']);
 
     // CATEGORIES
     Route::post('/categories', [CategoryController::class, 'store']);
