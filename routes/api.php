@@ -87,6 +87,7 @@ Route::middleware(['auth:sanctum', 'banned'])->group(function () {
 
     Route::get('/notifications', [NotificationController::class, 'index']);
     Route::patch('/notifications/{notification}/read', [NotificationController::class, 'read']);
+    Route::patch('/notifications/{notification}/undone', [NotificationController::class, 'undone']);
     Route::patch('/notifications/read-all', [NotificationController::class, 'readAll']);
     Route::delete('/notifications/read', [NotificationController::class, 'destroyRead']);
     Route::delete('/notifications/{notification}', [NotificationController::class, 'destroy']);
