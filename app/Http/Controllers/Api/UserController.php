@@ -75,6 +75,8 @@ class UserController extends Controller
             $data['followers_count']   = $user->followers()->count();
             $data['following_count']   = $user->following()->count();
             $data['posts_count']       = $user->posts()->where('status', 'open')->count();
+            $data['comments_count']    = Comment::where('user_id', $user->id)->count();
+            $data['accepted_count']    = Comment::where('user_id', $user->id)->where('is_accepted', true)->count();
 
             return $data;
         });
@@ -152,6 +154,7 @@ class UserController extends Controller
     public function comments(User $user): JsonResponse
     {
         $comments = Comment::where('user_id', $user->id)
+            ->whereNull('parent_id')
             ->with('post:id,title')
             ->latest()
             ->paginate(20);
