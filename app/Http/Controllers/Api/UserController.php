@@ -39,8 +39,17 @@ class UserController extends Controller
             ->whereIn('id', $roleIds->values())
             ->pluck('name', 'id');
 
-        $users->through(function ($user) use ($roleIds, $roleNames) {
+        $currentUser = $request->user('sanctum');
+        $followedIds = $currentUser
+            ? \DB::table('follows')->where('follower_id', $currentUser->id)
+                ->whereIn('following_id', $users->pluck('id'))
+                ->pluck('following_id')
+                ->toArray()
+            : [];
+
+        $users->through(function ($user) use ($roleIds, $roleNames, $followedIds) {
             $user->role_name = $roleNames->get($roleIds->get($user->id));
+            $user->is_following = in_array($user->id, $followedIds);
             return $user;
         });
 
@@ -66,7 +75,7 @@ class UserController extends Controller
     }
 
     // Lihat profile orang lain (public)
-    public function show(User $user): JsonResponse
+    public function show(Request $request, User $user): JsonResponse
     {
         $cacheKey = "users.show.{$user->id}";
 
@@ -85,6 +94,12 @@ class UserController extends Controller
 
             return $data;
         });
+
+        // is_following depends on the authenticated user, not cached
+        $currentUser = $request->user('sanctum');
+        $data['is_following'] = $currentUser
+            ? $user->followers()->where('follower_id', $currentUser->id)->exists()
+            : false;
 
         return response()->json(['data' => $data]);
     }
