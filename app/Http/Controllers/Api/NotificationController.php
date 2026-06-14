@@ -54,6 +54,21 @@ class NotificationController extends Controller
         return null;
     }
 
+    private function resolvePostId(?string $refId, ?string $refType): ?string
+    {
+        if (!$refId || !$refType) return null;
+
+        if ($refType === 'post') {
+            return $refId;
+        }
+
+        if ($refType === 'comment') {
+            return Comment::where('id', $refId)->value('post_id');
+        }
+
+        return null;
+    }
+
     public function index(Request $request): JsonResponse
     {
         $user = $request->user();
@@ -88,6 +103,7 @@ class NotificationController extends Controller
                 'target_id'    => $n->reference_id,
                 'target_type'  => $n->reference_type,
                 'target_title' => $this->resolveTargetTitle($n->reference_id, $n->reference_type),
+                'post_id'      => $this->resolvePostId($n->reference_id, $n->reference_type),
                 'message'      => null,
                 'created_at'   => $n->created_at,
                 'read_at'      => $n->is_read ? $n->created_at : null,
