@@ -29,7 +29,7 @@ class ReportController extends Controller
         $validated = $request->validate([
             'target_type' => 'required|in:post,comment',
             'target_id'   => 'required|uuid',
-            'reason'      => 'required|string|in:spam,harassment,misinformation,inappropriate,other',
+            'reason'      => 'required|string|max:255',
             'description' => 'nullable|string|max:500',
         ]);
 

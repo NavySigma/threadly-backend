@@ -106,7 +106,7 @@ class ReportTest extends TestCase
         ])->assertStatus(422);
     }
 
-    public function test_store_gagal_reason_tidak_valid(): void
+    public function test_store_gagal_reason_terlalu_panjang(): void
     {
         [$owner] = $this->actingAsUser();
         [, $headers] = $this->actingAsUser();
@@ -115,7 +115,7 @@ class ReportTest extends TestCase
         $this->withHeaders($headers)->postJson('/api/reports', [
             'target_type' => 'post',
             'target_id' => $post->id,
-            'reason' => 'invalid_reason',
+            'reason' => str_repeat('a', 256),
         ])->assertStatus(422)
             ->assertJsonValidationErrors(['reason']);
     }
