@@ -105,16 +105,17 @@ class PostController extends Controller
         $postData = $post->toArray();
         $postData['likes_count'] = $post->likes()->count();
 
-        if ($request->user()) {
+        $currentUser = $request->user('sanctum');
+        if ($currentUser) {
             $postData['is_liked'] = $post->likes()
-                ->where('user_id', $request->user()->id)
+                ->where('user_id', $currentUser->id)
                 ->exists();
 
-            $postData['is_bookmarked'] = Bookmark::where('user_id', $request->user()->id)
+            $postData['is_bookmarked'] = Bookmark::where('user_id', $currentUser->id)
                 ->where('post_id', $post->id)
                 ->exists();
 
-            $postData['user_vote'] = Vote::where('user_id', $request->user()->id)
+            $postData['user_vote'] = Vote::where('user_id', $currentUser->id)
                 ->where('target_id', $post->id)
                 ->where('target_type', 'post')
                 ->value('vote_type');

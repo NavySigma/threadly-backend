@@ -46,8 +46,9 @@ class CommentController extends Controller
 
         $userLikedIds = collect();
         $userVotes = collect();
-        if ($request->user()) {
-            $userId = $request->user()->id;
+        $currentUser = $request->user('sanctum');
+        if ($currentUser) {
+            $userId = $currentUser->id;
 
             $userLikedIds = Like::where('target_type', 'comment')
                 ->whereIn('target_id', $allCommentIds)
