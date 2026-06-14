@@ -63,14 +63,22 @@ class CommentController extends Controller
         }
         $userLikedSet = $userLikedIds->flip();
 
-        $comments->through(function ($comment) use ($userLikedSet, $replyLikeCounts, $userVotes) {
+        // Bulk load edit counts
+        $editCounts = CommentEditHistory::whereIn('comment_id', $allCommentIds)
+            ->selectRaw('comment_id, count(*) as count')
+            ->groupBy('comment_id')
+            ->pluck('count', 'comment_id');
+
+        $comments->through(function ($comment) use ($userLikedSet, $replyLikeCounts, $userVotes, $editCounts) {
             $comment->user_liked = $userLikedSet->has($comment->id);
             $comment->user_vote = $userVotes->get($comment->id);
+            $comment->edits_count = $editCounts->get($comment->id, 0);
 
-            $comment->replies->each(function ($reply) use ($userLikedSet, $replyLikeCounts, $userVotes) {
+            $comment->replies->each(function ($reply) use ($userLikedSet, $replyLikeCounts, $userVotes, $editCounts) {
                 $reply->user_liked = $userLikedSet->has($reply->id);
                 $reply->likes_count = $replyLikeCounts->get($reply->id, 0);
                 $reply->user_vote = $userVotes->get($reply->id);
+                $reply->edits_count = $editCounts->get($reply->id, 0);
             });
 
             return $comment;
