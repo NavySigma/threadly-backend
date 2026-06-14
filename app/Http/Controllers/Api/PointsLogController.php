@@ -51,11 +51,31 @@ class PointsLogController extends Controller
             return response()->json(['message' => 'Forbidden.'], 403);
         }
 
+        $user = \App\Models\User::findOrFail($userId);
+
         $logs = PointsLog::where('user_id', $userId)
             ->latest('created_at')
-            ->paginate(20);
+            ->paginate(100);
 
-        return response()->json(['data' => $logs]);
+        $summary = [
+            'current_points' => $user->reputation_points,
+            'total_earned'   => PointsLog::where('user_id', $userId)
+                                    ->where('points', '>', 0)
+                                    ->sum('points'),
+            'total_deducted' => PointsLog::where('user_id', $userId)
+                                    ->where('points', '<', 0)
+                                    ->sum('points'),
+        ];
+
+        return response()->json([
+            'user'    => [
+                'id'       => $user->id,
+                'username' => $user->username,
+                'avatar_url' => $user->avatar_url,
+            ],
+            'summary' => $summary,
+            'data'    => $logs,
+        ]);
     }
 
     public function __construct(private PointService $pointService) {}
