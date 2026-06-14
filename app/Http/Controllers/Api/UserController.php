@@ -115,7 +115,6 @@ class UserController extends Controller
     public function posts(User $user): JsonResponse
     {
         $posts = $user->posts()
-            ->where('status', 'open')
             ->with(['category:id,name,slug', 'tags:id,name,slug,color'])
             ->latest()
             ->paginate(15);
