@@ -13,45 +13,41 @@ class PostController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $cacheKey = 'posts.index.'.md5(json_encode($request->all()));
-
-        $posts = cache()->remember($cacheKey, now()->addMinutes(5), function () use ($request) {
-            return Post::with([
-                'user:id,username,avatar_url',
-                'category:id,name,slug',
-                'tags:id,name,slug,color',
-            ])
-                ->withCount('comments')
-                ->where('status', 'open')
-                ->when($request->search, fn ($q) => $q->where('title', 'like', "%{$request->search}%")
-                    ->orWhere('body', 'like', "%{$request->search}%")
-                )
-                ->when($request->category_id, fn ($q) => $q->where('category_id', $request->category_id)
-                )
-                ->when($request->category_slug, fn ($q) => $q->whereHas('category', fn ($q) => $q->where('slug', $request->category_slug)
-                )
-                )
-                ->when($request->tag_id, fn ($q) => $q->whereHas('tags', fn ($q) => $q->where('tags.id', $request->tag_id)
-                )
-                )
-                ->when($request->tag_slug, fn ($q) => $q->whereHas('tags', fn ($q) => $q->where('tags.slug', $request->tag_slug)
-                )
-                )
-                ->when($request->user_id, fn ($q) => $q->where('user_id', $request->user_id)
-                )
-                ->when($request->is_answered !== null, fn ($q) => $q->where('is_answered', filter_var($request->is_answered, FILTER_VALIDATE_BOOLEAN))
-                )
-                ->when($request->sort, function ($q) use ($request) {
-                    match ($request->sort) {
-                        'latest' => $q->latest(),
-                        'oldest' => $q->oldest(),
-                        'popular' => $q->orderByDesc('view_count'),
-                        'votes' => $q->orderByDesc('vote_score'),
-                        default => $q->latest(),
-                    };
-                }, fn ($q) => $q->latest())
-                ->paginate(15);
-        });
+        $posts = Post::with([
+            'user:id,username,avatar_url',
+            'category:id,name,slug',
+            'tags:id,name,slug,color',
+        ])
+            ->withCount('comments')
+            ->where('status', 'open')
+            ->when($request->search, fn ($q) => $q->where('title', 'like', "%{$request->search}%")
+                ->orWhere('body', 'like', "%{$request->search}%")
+            )
+            ->when($request->category_id, fn ($q) => $q->where('category_id', $request->category_id)
+            )
+            ->when($request->category_slug, fn ($q) => $q->whereHas('category', fn ($q) => $q->where('slug', $request->category_slug)
+            )
+            )
+            ->when($request->tag_id, fn ($q) => $q->whereHas('tags', fn ($q) => $q->where('tags.id', $request->tag_id)
+            )
+            )
+            ->when($request->tag_slug, fn ($q) => $q->whereHas('tags', fn ($q) => $q->where('tags.slug', $request->tag_slug)
+            )
+            )
+            ->when($request->user_id, fn ($q) => $q->where('user_id', $request->user_id)
+            )
+            ->when($request->is_answered !== null, fn ($q) => $q->where('is_answered', filter_var($request->is_answered, FILTER_VALIDATE_BOOLEAN))
+            )
+            ->when($request->sort, function ($q) use ($request) {
+                match ($request->sort) {
+                    'latest' => $q->latest(),
+                    'oldest' => $q->oldest(),
+                    'popular' => $q->orderByDesc('view_count'),
+                    'votes' => $q->orderByDesc('vote_score'),
+                    default => $q->latest(),
+                };
+            }, fn ($q) => $q->latest())
+            ->paginate(15);
 
         return response()->json($posts);
     }
@@ -89,29 +85,21 @@ class PostController extends Controller
 
         $post->load(['user:id,username,avatar_url', 'category:id,name,slug', 'tags:id,name,slug,color']);
 
-        $this->clearPostCache();
-
         return response()->json(['message' => 'Post berhasil dibuat.', 'data' => $post], 201);
     }
 
     public function show(Request $request, Post $post): JsonResponse
     {
-        $cacheKey = "posts.show.{$post->id}";
+        $post->increment('view_count');
+        $post->load([
+            'user:id,username,avatar_url,reputation_points',
+            'category:id,name,slug',
+            'tags:id,name,slug,color',
+            'acceptedAnswer.user:id,username,avatar_url',
+        ]);
 
-        // Cache hanya data post — tidak include data per user
-        $postData = cache()->remember($cacheKey, now()->addMinutes(5), function () use ($post) {
-            $post->increment('view_count');
-            $post->load([
-                'user:id,username,avatar_url,reputation_points',
-                'category:id,name,slug',
-                'tags:id,name,slug,color',
-                'acceptedAnswer.user:id,username,avatar_url',
-            ]);
+        $postData = $post->toArray();
 
-            return $post->toArray();
-        });
-
-        // Data per user — di-query langsung, tidak di-cache
         if ($request->user()) {
             $postData['is_liked'] = Like::where('user_id', $request->user()->id)
                 ->where('target_id', $post->id)
@@ -189,8 +177,6 @@ class PostController extends Controller
 
         $post->load(['user:id,username,avatar_url', 'category:id,name,slug', 'tags:id,name,slug,color']);
 
-        $this->clearPostCache($post->id);
-
         return response()->json(['message' => 'Post berhasil diupdate.', 'data' => $post]);
     }
 
@@ -220,8 +206,6 @@ class PostController extends Controller
 
         $post->update(['status' => 'deleted']);
 
-        $this->clearPostCache($post->id);
-
         return response()->json(['message' => 'Post berhasil dihapus.']);
     }
 
@@ -245,8 +229,6 @@ class PostController extends Controller
             'status' => 'closed',
             'closed_at' => now(),
         ]);
-
-        cache()->forget("posts.show.{$post->id}");
 
         return response()->json([
             'message' => 'Post berhasil ditutup. Kamu punya waktu 24 jam untuk reopen.',
@@ -280,16 +262,7 @@ class PostController extends Controller
             'closed_at' => null,
         ]);
 
-        cache()->forget("posts.show.{$post->id}");
-
         return response()->json(['message' => 'Post berhasil dibuka kembali.']);
     }
 
-    private function clearPostCache(?string $postId = null): void
-    {
-        if ($postId) {
-            cache()->forget("posts.show.{$postId}");
-        }
-        cache()->flush();
-    }
 }
