@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Comment;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -145,5 +146,16 @@ class UserController extends Controller
             ->paginate(15);
 
         return response()->json($posts);
+    }
+
+    // Lihat komentar milik user tertentu (public)
+    public function comments(User $user): JsonResponse
+    {
+        $comments = Comment::where('user_id', $user->id)
+            ->with('post:id,title')
+            ->latest()
+            ->paginate(20);
+
+        return response()->json($comments);
     }
 }

@@ -120,6 +120,7 @@ Route::middleware('throttle:api')->group(function () {
     // FOLLOW
     Route::get('/users/{user}/followers', [FollowController::class, 'followers']);
     Route::get('/users/{user}/following', [FollowController::class, 'following']);
+    Route::get('/users/{user}/comments', [UserController::class, 'comments']);
     // CATEGORIES
     Route::get('/categories', [CategoryController::class, 'index']);
     Route::get('/categories/{category}', [CategoryController::class, 'show']);
