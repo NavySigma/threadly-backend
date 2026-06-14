@@ -68,7 +68,7 @@ class PostController extends Controller
             'category_id' => 'required|uuid|exists:categories,id',
             'title' => 'required|string|max:300',
             'body' => 'required|string|max:50000',
-            'tags' => 'nullable|array|max:5',
+            'tags' => 'nullable|array|max:10',
             'tags.*' => 'uuid|exists:tags,id',
         ]);
 
@@ -148,7 +148,7 @@ class PostController extends Controller
             'category_id' => 'sometimes|uuid|exists:categories,id',
             'title' => 'sometimes|string|min:10|max:300',
             'body' => 'sometimes|string|min:20',
-            'tags' => 'nullable|array|max:5',
+            'tags' => 'nullable|array|max:10',
             'tags.*' => 'uuid|exists:tags,id',
             'reason' => 'nullable|string|max:255',
         ]);
