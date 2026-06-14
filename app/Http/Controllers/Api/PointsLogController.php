@@ -25,7 +25,7 @@ class PointsLogController extends Controller
                 };
             })
             ->latest('created_at')
-            ->paginate(20);
+            ->paginate(100);
 
         // Total summary
         $summary = [
