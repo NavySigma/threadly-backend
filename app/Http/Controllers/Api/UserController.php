@@ -30,6 +30,19 @@ class UserController extends Controller
 
         $users = $query->paginate(20);
 
+        $roleIds = \DB::table('user_roles')
+            ->whereIn('user_id', $users->pluck('id'))
+            ->pluck('role_id', 'user_id');
+
+        $roleNames = \DB::table('roles')
+            ->whereIn('id', $roleIds->values())
+            ->pluck('name', 'id');
+
+        $users->through(function ($user) use ($roleIds, $roleNames) {
+            $user->role_name = $roleNames->get($roleIds->get($user->id));
+            return $user;
+        });
+
         return response()->json($users);
     }
 
