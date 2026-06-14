@@ -24,6 +24,7 @@ class NotificationController extends Controller
             'complete_profile' => 'complete_profile',
             'report_confirmed' => 'report_confirmed',
             'report_penalized' => 'report_penalized',
+            'level_up'         => 'level_up',
             default            => $type,
         };
     }
