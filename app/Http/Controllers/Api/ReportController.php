@@ -143,12 +143,11 @@ class ReportController extends Controller
                 if ($report->target_type === 'post') {
                     $target->update(['status' => 'deleted']);
                 } else {
-                    // Soft delete comment jika punya replies
-                    if ($target->replies()->exists()) {
-                        $target->update(['body' => '[komentar telah dihapus]']);
-                    } else {
-                        $target->delete();
+                    // Simpan body asli ke description report biar ke-track
+                    if (empty($report->description)) {
+                        $report->update(['description' => $target->body]);
                     }
+                    $target->update(['body' => '[komentar telah dihapus oleh admin]']);
                 }
 
                 // Sanksi -10 poin ke pembuat konten
