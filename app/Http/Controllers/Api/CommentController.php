@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Comment;
+use App\Models\CommentEditHistory;
 use App\Models\Like;
 use App\Models\Post;
 use App\Models\User;
