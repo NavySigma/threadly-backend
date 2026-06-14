@@ -4,9 +4,10 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Comment;
-use App\Models\CommentEditHistory;
+use App\Models\Like;
 use App\Models\Post;
 use App\Models\User;
+use App\Models\Vote;
 use App\Services\NotificationService;
 use App\Services\PointService;
 use Illuminate\Http\JsonResponse;
@@ -19,16 +20,59 @@ class CommentController extends Controller
         private NotificationService $notificationService,
     ) {}
     // List komentar dari sebuah post (top-level only, reply di-load nested)
-    public function index(Post $post): JsonResponse
+    public function index(Request $request, Post $post): JsonResponse
     {
         $comments = Comment::with([
                 'user:id,username,avatar_url,reputation_points',
                 'replies.user:id,username,avatar_url,reputation_points',
             ])
+            ->withCount('likes')
             ->where('post_id', $post->id)
-            ->whereNull('parent_id') // top-level only
+            ->whereNull('parent_id')
             ->latest()
             ->paginate(20);
+
+        $allComments = collect($comments->items())
+            ->flatMap(fn ($c) => collect([$c])->concat($c->replies));
+
+        $allCommentIds = $allComments->pluck('id');
+
+        // Bulk load likes_count for replies (top-level already has withCount)
+        $replyLikeCounts = Like::whereIn('target_id', $allCommentIds)
+            ->where('target_type', 'comment')
+            ->selectRaw('target_id, count(*) as count')
+            ->groupBy('target_id')
+            ->pluck('count', 'target_id');
+
+        $userLikedIds = collect();
+        $userVotes = collect();
+        if ($request->user()) {
+            $userId = $request->user()->id;
+
+            $userLikedIds = Like::where('target_type', 'comment')
+                ->whereIn('target_id', $allCommentIds)
+                ->where('user_id', $userId)
+                ->pluck('target_id');
+
+            $userVotes = Vote::where('target_type', 'comment')
+                ->whereIn('target_id', $allCommentIds)
+                ->where('user_id', $userId)
+                ->pluck('vote_type', 'target_id');
+        }
+        $userLikedSet = $userLikedIds->flip();
+
+        $comments->through(function ($comment) use ($userLikedSet, $replyLikeCounts, $userVotes) {
+            $comment->user_liked = $userLikedSet->has($comment->id);
+            $comment->user_vote = $userVotes->get($comment->id);
+
+            $comment->replies->each(function ($reply) use ($userLikedSet, $replyLikeCounts, $userVotes) {
+                $reply->user_liked = $userLikedSet->has($reply->id);
+                $reply->likes_count = $replyLikeCounts->get($reply->id, 0);
+                $reply->user_vote = $userVotes->get($reply->id);
+            });
+
+            return $comment;
+        });
 
         return response()->json($comments);
     }

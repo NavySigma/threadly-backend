@@ -8,6 +8,7 @@ use App\Models\Comment;
 use App\Models\PostEditHistory;
 use App\Models\Tag;
 use App\Models\User;
+use App\Models\Bookmark;
 use App\Models\Vote;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -102,11 +103,11 @@ class PostController extends Controller
         ]);
 
         $postData = $post->toArray();
+        $postData['likes_count'] = $post->likes()->count();
 
         if ($request->user()) {
-            $postData['is_liked'] = Like::where('user_id', $request->user()->id)
-                ->where('target_id', $post->id)
-                ->where('target_type', 'post')
+            $postData['is_liked'] = $post->likes()
+                ->where('user_id', $request->user()->id)
                 ->exists();
 
             $postData['is_bookmarked'] = Bookmark::where('user_id', $request->user()->id)
