@@ -66,12 +66,14 @@ class AuthController extends Controller
 
     public function login(Request $request)
     {
+        $fieldType = filter_var($request->input('email'), FILTER_VALIDATE_EMAIL) ? 'email' : 'username';
+
         $validated = $request->validate([
-            'email' => 'required|email|max:255',
+            'email' => 'required|string|max:255',
             'password' => 'required|string|max:255',
         ]);
 
-        $user = User::where('email', $validated['email'])->first();
+        $user = User::where($fieldType, $validated['email'])->first();
 
         if (! $user || ! Hash::check($validated['password'], $user->password_hash)) {
             return response()->json([
