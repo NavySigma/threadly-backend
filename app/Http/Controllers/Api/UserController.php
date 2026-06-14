@@ -56,6 +56,11 @@ class UserController extends Controller
             'data' => array_merge($user->toArray(), [
                 'level_title'       => $user->level_title,
                 'next_level_points' => $user->next_level_points,
+                'followers_count'   => $user->followers()->count(),
+                'following_count'   => $user->following()->count(),
+                'posts_count'       => $user->posts()->where('status', 'open')->count(),
+                'comments_count'    => Comment::where('user_id', $user->id)->count(),
+                'accepted_count'    => Comment::where('user_id', $user->id)->where('is_accepted', true)->count(),
             ])
         ]);
     }
