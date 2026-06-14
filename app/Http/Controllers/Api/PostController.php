@@ -4,8 +4,11 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Post;
+use App\Models\Comment;
 use App\Models\PostEditHistory;
 use App\Models\Tag;
+use App\Models\User;
+use App\Models\Vote;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -49,7 +52,19 @@ class PostController extends Controller
             }, fn ($q) => $q->latest())
             ->paginate(15);
 
-        return response()->json($posts);
+        $community = cache()->remember('community.stats', now()->addMinutes(5), function () {
+            return [
+                'users_online' => User::where('updated_at', '>=', now()->subMinutes(5))->count(),
+                'questions'    => Post::where('status', 'open')->count(),
+                'answers'      => Comment::count(),
+                'upvotes'      => Vote::where('vote_type', 'up')->count(),
+            ];
+        });
+
+        $response = $posts->toArray();
+        $response['community'] = $community;
+
+        return response()->json($response);
     }
 
     public function store(Request $request): JsonResponse
