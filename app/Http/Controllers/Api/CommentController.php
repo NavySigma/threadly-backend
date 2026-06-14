@@ -164,7 +164,7 @@ class CommentController extends Controller
     // Tambah method untuk lihat edit history comment (public)
     public function history(Request $request, Comment $comment): JsonResponse
     {
-        if (!$request->user()->isAdmin()) {
+        if (!$request->user()->isModeratorOrAdmin()) {
             return response()->json(['message' => 'Forbidden.'], 403);
         }
 

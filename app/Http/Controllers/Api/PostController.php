@@ -186,7 +186,7 @@ class PostController extends Controller
     // Tambah method untuk lihat edit history post (admin only)
     public function history(Request $request, Post $post): JsonResponse
     {
-        if (! $request->user()->isAdmin()) {
+        if (! $request->user()->isModeratorOrAdmin()) {
             return response()->json(['message' => 'Forbidden.'], 403);
         }
 

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\AdminController;
 use App\Http\Controllers\Api\Auth\PasswordResetController;
 use App\Http\Controllers\Api\Auth\SocialAuthController;
 use App\Http\Controllers\Api\BookmarkController;
@@ -56,6 +57,7 @@ Route::middleware(['auth:sanctum', 'banned'])->group(function () {
 
     Route::get('/posts/{post}/history', [PostController::class, 'history']);
     Route::get('/comments/{comment}/history', [CommentController::class, 'history']);
+    Route::get('/admin/edit-history', [AdminController::class, 'editHistory']);
     Route::patch('/posts/{post}/close', [PostController::class, 'close']);
     Route::patch('/posts/{post}/reopen', [PostController::class, 'reopen']);
 
