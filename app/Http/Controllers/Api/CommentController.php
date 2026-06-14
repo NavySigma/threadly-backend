@@ -99,7 +99,7 @@ class CommentController extends Controller
         }
 
         $validated = $request->validate([
-            'body'      => 'required|string|min:5',
+            'body'      => 'required|string',
             'parent_id' => 'nullable|uuid|exists:comments,id',
         ]);
 
