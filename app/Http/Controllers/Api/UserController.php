@@ -59,8 +59,8 @@ class UserController extends Controller
                 'followers_count'   => $user->followers()->count(),
                 'following_count'   => $user->following()->count(),
                 'posts_count'       => $user->posts()->where('status', 'open')->count(),
-                'comments_count'    => Comment::where('user_id', $user->id)->count(),
-                'accepted_count'    => Comment::where('user_id', $user->id)->where('is_accepted', true)->count(),
+                'comments_count'    => Comment::where('user_id', $user->id)->whereNull('parent_id')->count(),
+                'accepted_count'    => Comment::where('user_id', $user->id)->whereNull('parent_id')->where('is_accepted', true)->count(),
             ])
         ]);
     }
@@ -70,7 +70,7 @@ class UserController extends Controller
     {
         $cacheKey = "users.show.{$user->id}";
 
-        $data = cache()->remember($cacheKey, now()->addMinutes(10), function () use ($user) {
+        $data = cache()->remember($cacheKey, now()->addMinutes(1), function () use ($user) {
             $data = $user->only([
                 'id', 'username', 'avatar_url', 'bio', 'reputation_points', 'level', 'created_at'
             ]);
@@ -80,8 +80,8 @@ class UserController extends Controller
             $data['followers_count']   = $user->followers()->count();
             $data['following_count']   = $user->following()->count();
             $data['posts_count']       = $user->posts()->where('status', 'open')->count();
-            $data['comments_count']    = Comment::where('user_id', $user->id)->count();
-            $data['accepted_count']    = Comment::where('user_id', $user->id)->where('is_accepted', true)->count();
+            $data['comments_count']    = Comment::where('user_id', $user->id)->whereNull('parent_id')->count();
+            $data['accepted_count']    = Comment::where('user_id', $user->id)->whereNull('parent_id')->where('is_accepted', true)->count();
 
             return $data;
         });
