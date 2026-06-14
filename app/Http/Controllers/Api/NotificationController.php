@@ -54,6 +54,17 @@ class NotificationController extends Controller
         return null;
     }
 
+    private function resolveMessage(?string $refId, ?string $refType): ?string
+    {
+        if (!$refId || !$refType) return null;
+
+        if ($refType === 'comment') {
+            return Comment::where('id', $refId)->value('body');
+        }
+
+        return null;
+    }
+
     private function resolvePostId(?string $refId, ?string $refType): ?string
     {
         if (!$refId || !$refType) return null;
@@ -104,7 +115,7 @@ class NotificationController extends Controller
                 'target_type'  => $n->reference_type,
                 'target_title' => $this->resolveTargetTitle($n->reference_id, $n->reference_type),
                 'post_id'      => $this->resolvePostId($n->reference_id, $n->reference_type),
-                'message'      => null,
+                'message'      => $this->resolveMessage($n->reference_id, $n->reference_type),
                 'created_at'   => $n->created_at,
                 'read_at'      => $n->is_read ? $n->created_at : null,
             ];
